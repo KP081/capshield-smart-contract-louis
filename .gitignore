@@ -1,0 +1,49 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+/scratch
+/artifacts/*
+/cache/*
+typechain-types
+
+# Environment variables (NEVER commit these!)
+.env
+.env.*
+!.env.example
+
+# Hardhat
+artifacts/
+cache/
+coverage/
+coverage.json
+
+# Deployment info (contains sensitive addresses)
+deployments/*.json
+deployment-info.json
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary files
+old.js
+tmp
+temp.js
+*.tmp
