@@ -55,19 +55,27 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
      *      to prevent single point of failure. The constructor checks this requirement.
      */
     constructor(address admin, address _treasury, address _dao) {
-        // require(admin != address(0), ZeroAddress());
-        // require(_treasury != address(0), ZeroAddress());
-        // require(_dao != address(0), ZeroAddress());
+        assembly {
+            if iszero(admin) {
+                mstore(0x00, 0xd92e233d) // ZeroAddress()
+                revert(0x1c, 0x04)
+            }
+            if iszero(_treasury) {
+                mstore(0x00, 0xd92e233d) // ZeroAddress()
+                revert(0x1c, 0x04)
+            }
+            if iszero(_dao) {
+                mstore(0x00, 0xd92e233d) // ZeroAddress()
+                revert(0x1c, 0x04)
+            }
+        }
 
-        if (admin == address(0)) revert ZeroAddress();
-        if (_treasury == address(0)) revert ZeroAddress();
-        if (_dao == address(0)) revert ZeroAddress();
-
-        // Enforce that admin is a contract (multisig), not an EOA
-        // This prevents single EOA from having full control over the token
-        // require(_isContract(admin), AdminMustBeContract());
-
-        if (!_isContract(admin)) revert AdminMustBeContract();
+        if (!_isContract(admin)) {
+            assembly {
+                mstore(0x00, 0xb597f865) // AdminMustBeContract()
+                revert(0x1c, 0x04)
+            }
+        }
 
         _initializeOwner(admin);
         _grantRoles(
@@ -93,14 +101,22 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
     ///////////////// MODIFIERS /////////////////
 
     modifier validAddress(address addr) {
-        // require(addr != address(0), ZeroAddress());
-        if (addr == address(0)) revert ZeroAddress();
+        assembly {
+            if iszero(addr) {
+                mstore(0x00, 0xd92e233d) // ZeroAddress()
+                revert(0x1c, 0x04)
+            }
+        }
         _;
     }
 
     modifier validAmount(uint256 amount) {
-        // require(amount > 0, InvalidAmount());
-        if(amount <= 0) revert InvalidAmount();
+        assembly {
+            if iszero(amount) {
+                mstore(0x00, 0x2c5211c6) // InvalidAmount()
+                revert(0x1c, 0x04)
+            }
+        }
         _;
     }
 
@@ -138,14 +154,31 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         validAddress(to)
         validAmount(amount)
     {
-        // require(totalMinted + amount <= MAX_SUPPLY, MaxSupplyExceeded());
-        if (totalMinted + amount > MAX_SUPPLY) revert MaxSupplyExceeded();
+        uint256 newTotal;
+        uint256 newTeamMinted;
 
-        totalMinted = totalMinted + amount;
-        mintAllocation.teamMinted = mintAllocation.teamMinted + amount;
+        assembly {
+            let currentTotal := sload(totalMinted.slot)
+
+            // Check: totalMinted + amount <= MAX_SUPPLY
+            newTotal := add(currentTotal, amount)
+            if gt(newTotal, MAX_SUPPLY) {
+                mstore(0x00, 0x8a164f63) // MaxSupplyExceeded()
+                revert(0x1c, 0x04)
+            }
+
+            sstore(totalMinted.slot, newTotal)
+
+            let teamSlot := mintAllocation.slot
+            let currentTeam := sload(teamSlot)
+            newTeamMinted := add(currentTeam, amount)
+            sstore(teamSlot, newTeamMinted)
+        }
+
+        totalMinted = newTotal;
+        mintAllocation.teamMinted = newTeamMinted;
 
         _mint(to, amount);
-
         emit Mint(to, amount, TEAM_MINTER_ROLE);
     }
 
@@ -165,13 +198,31 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         validAddress(to)
         validAmount(amount)
     {
-        // require(totalMinted + amount <= MAX_SUPPLY, MaxSupplyExceeded());
-        if (totalMinted + amount > MAX_SUPPLY) revert MaxSupplyExceeded();
+        uint256 newTotal;
+        uint256 newTreasuryMinted;
 
-        totalMinted = totalMinted + amount;
-        mintAllocation.treasuryMinted = mintAllocation.treasuryMinted + amount;
+        assembly {
+            let currentTotal := sload(totalMinted.slot)
+            newTotal := add(currentTotal, amount)
+
+            if gt(newTotal, MAX_SUPPLY) {
+                mstore(0x00, 0x8a164f63) // MaxSupplyExceeded()
+                revert(0x1c, 0x04)
+            }
+
+            sstore(totalMinted.slot, newTotal)
+
+            // Update treasuryMinted (offset 1 in struct)
+            let treasurySlot := add(mintAllocation.slot, 1)
+            let currentTreasuryMint := sload(treasurySlot)
+            newTreasuryMinted := add(currentTreasuryMint, amount)
+            sstore(treasurySlot, newTreasuryMinted)
+        }
+
+        totalMinted = newTotal;
+        mintAllocation.treasuryMinted = newTreasuryMinted;
+
         _mint(to, amount);
-
         emit Mint(to, amount, TREASURY_MINTER_ROLE);
     }
 
@@ -191,13 +242,31 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         validAddress(to)
         validAmount(amount)
     {
-        // require(totalMinted + amount <= MAX_SUPPLY, MaxSupplyExceeded());
-        if (totalMinted + amount > MAX_SUPPLY) revert MaxSupplyExceeded();
+        uint256 newTotal;
+        uint256 newDaoMinted;
 
-        totalMinted = totalMinted + amount;
-        mintAllocation.daoMinted = mintAllocation.daoMinted + amount;
+        assembly {
+            let currentTotal := sload(totalMinted.slot)
+            newTotal := add(currentTotal, amount)
+
+            if gt(newTotal, MAX_SUPPLY) {
+                mstore(0x00, 0x8a164f63) // MaxSupplyExceeded()
+                revert(0x1c, 0x04)
+            }
+
+            sstore(totalMinted.slot, newTotal)
+
+            // Update daoMinted (offset 2 in struct)
+            let daoSlot := add(mintAllocation.slot, 2)
+            let currentDaoMint := sload(daoSlot)
+            newDaoMinted := add(currentDaoMint, amount)
+            sstore(daoSlot, newDaoMinted)
+        }
+
+        totalMinted = newTotal;
+        mintAllocation.daoMinted = newDaoMinted;
+
         _mint(to, amount);
-
         emit Mint(to, amount, DAO_MINTER_ROLE);
     }
 
@@ -214,18 +283,46 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         uint256 revenue,
         uint256 marketValue
     ) external onlyOwner whenNotPaused validAddress(to) {
-        // require(revenue > 0, InvalidRevenue());
-        // require(marketValue > 0, InvalidMarketValue());
-        if (revenue <= 0) revert InvalidRevenue();
-        if (marketValue <= 0) revert InvalidMarketValue();
+        uint256 tokensToMint;
 
-        uint256 tokensToMint = (revenue * 10 ** decimals()) / marketValue;
-        // require(tokensToMint > 0, InvalidAmount());
-        // require(totalMinted + tokensToMint <= MAX_SUPPLY, MaxSupplyExceeded());
-        if (tokensToMint <= 0) revert InvalidAmount();
-        if (totalMinted + tokensToMint > MAX_SUPPLY) revert MaxSupplyExceeded();
+        assembly {
+            // Check revenue > 0
+            if iszero(revenue) {
+                mstore(0x00, 0xa34477b5) // InvalidRevenue()
+                revert(0x1c, 0x04)
+            }
 
-        totalMinted = totalMinted + tokensToMint;
+            // Check marketValue > 0
+            if iszero(marketValue) {
+                mstore(0x00, 0x4ad34ed1) // InvalidMarketValue()
+                revert(0x1c, 0x04)
+            }
+
+            // Calculate: tokensToMint = (revenue * 10^18) / marketValue
+            let decimalss := 18
+            let scaledRevenue := mul(revenue, exp(10, decimalss))
+            tokensToMint := div(scaledRevenue, marketValue)
+
+            // Check tokensToMint > 0
+            if iszero(tokensToMint) {
+                mstore(0x00, 0x2c5211c6) // InvalidAmount()
+                revert(0x1c, 0x04)
+            }
+
+            // Check supply limit
+            let currentTotal := sload(totalMinted.slot)
+            let newTotal := add(currentTotal, tokensToMint)
+
+            if gt(newTotal, MAX_SUPPLY) {
+                mstore(0x00, 0x8a164f63) // MaxSupplyExceeded()
+                revert(0x1c, 0x04)
+            }
+
+            // Update totalMinted
+            sstore(totalMinted.slot, newTotal)
+        }
+
+        totalMinted += tokensToMint;
         _mint(to, tokensToMint);
 
         emit RevenueMint(revenue, marketValue, tokensToMint);
@@ -381,8 +478,12 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
     function transferOwnership(
         address newOwner
     ) public payable override onlyOwner {
-        // require(_isContract(newOwner), AdminMustBeContract());
-        if (!_isContract(newOwner)) revert AdminMustBeContract();
+        if (!_isContract(newOwner)) {
+            assembly {
+                mstore(0x00, 0xb597f865) // AdminMustBeContract()
+                revert(0x1c, 0x04)
+            }
+        }
         super.transferOwnership(newOwner);
     }
 
@@ -394,8 +495,12 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
     function completeOwnershipHandover(
         address pendingOwner
     ) public payable override onlyOwner {
-        // require(_isContract(pendingOwner), AdminMustBeContract());
-        if (!_isContract(pendingOwner)) revert AdminMustBeContract();
+        if (!_isContract(pendingOwner)) {
+            assembly {
+                mstore(0x00, 0xb597f865) // AdminMustBeContract()
+                revert(0x1c, 0x04)
+            }
+        }
         super.completeOwnershipHandover(pendingOwner);
     }
 
@@ -496,25 +601,45 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         address to,
         uint256 amount
     ) internal {
-        // require(from != address(0), ZeroAddress());
-        // require(to != address(0), ZeroAddress());
-        // require(amount > 0, InvalidAmount());
-        if (from == address(0)) revert ZeroAddress();
-        if (to == address(0)) revert ZeroAddress();
-        if (amount <= 0) revert InvalidAmount();
+        assembly {
+            if iszero(from) {
+                mstore(0x00, 0xd92e233d) // ZeroAddress()
+                revert(0x1c, 0x04)
+            }
+            if iszero(to) {
+                mstore(0x00, 0xd92e233d) // ZeroAddress()
+                revert(0x1c, 0x04)
+            }
+            if iszero(amount) {
+                mstore(0x00, 0x2c5211c6) // InvalidAmount()
+                revert(0x1c, 0x04)
+            }
+        }
 
-        // Check if either sender or recipient is exempt
-        if (exemptions[from] || exemptions[to]) {
-            // Exempt transfer - no fees
+        // Check exemptions
+        bool fromExempt = exemptions[from];
+        bool toExempt = exemptions[to];
+
+        if (fromExempt || toExempt) {
             super._transfer(from, to, amount);
         } else {
-            // Calculate fees
-            uint256 burnAmount = (amount * BURN_FEE_PERCENT) / FEE_DENOMINATOR;
-            uint256 treasuryAmount = (amount * TREASURY_FEE_PERCENT) /
-                FEE_DENOMINATOR;
-            uint256 recipientAmount = amount - burnAmount - treasuryAmount;
+            // Calculate fees using assembly for gas efficiency
+            uint256 burnAmount;
+            uint256 treasuryAmount;
+            uint256 recipientAmount;
 
-            // Burn tokens (reduce supply)
+            assembly {
+                // burnAmount = (amount * 1) / 100
+                burnAmount := div(amount, FEE_DENOMINATOR)
+
+                // treasuryAmount = (amount * 1) / 100
+                treasuryAmount := div(amount, FEE_DENOMINATOR)
+
+                // recipientAmount = amount - burnAmount - treasuryAmount
+                recipientAmount := sub(amount, add(burnAmount, treasuryAmount))
+            }
+
+            // Burn tokens
             if (burnAmount > 0) {
                 _burn(from, burnAmount);
             }
