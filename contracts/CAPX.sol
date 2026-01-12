@@ -459,10 +459,21 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         address oldTreasury = treasury;
         treasury = newTreasury;
 
-        exemptions[oldTreasury] = false;
-        exemptions[newTreasury] = true;
-
         assembly {
+            let exemptionsSlot := exemptions.slot
+
+            // exemptions[oldTreasury] = false;
+            mstore(0x00, oldTreasury)
+            mstore(0x20, exemptionsSlot)
+            let exemptionsOTSlot := keccak256(0x00, 0x40)
+            sstore(exemptionsOTSlot, 0x00)
+
+            // exemptions[newTreasury] = true;
+            mstore(0x00, newTreasury)
+            mstore(0x20, exemptionsSlot)
+            let exemptionsNTSlot := keccak256(0x00, 0x40)
+            sstore(exemptionsNTSlot, 0x01)
+
             // emit TreasuryAddressUpdated(oldTreasury, newTreasury);
             log3(
                 0x00,
@@ -503,10 +514,21 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         address oldDao = dao;
         dao = newDao;
 
-        exemptions[oldDao] = false;
-        exemptions[newDao] = true;
-
         assembly {
+            let exemptionsSlot := exemptions.slot
+
+            // exemptions[oldDao] = false;
+            mstore(0x00, oldDao)
+            mstore(0x20, exemptionsSlot)
+            let exemptionsODSlot := keccak256(0x00, 0x40)
+            sstore(exemptionsODSlot, 0x00)
+
+            // exemptions[newDao] = true;
+            mstore(0x00, newDao)
+            mstore(0x20, exemptionsSlot)
+            let exemptionsNDSlot := keccak256(0x00, 0x40)
+            sstore(exemptionsNDSlot, 0x01)
+
             // emit DaoAddressUpdated(oldDao, newDao);
             log3(
                 0x00,
@@ -546,9 +568,16 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         address account,
         bool exempt
     ) external onlyOwner validAddress(account) {
-        exemptions[account] = exempt;
-
         assembly {
+            // exemptions[account] = exempt;
+            let exemptionsSlot := exemptions.slot
+
+            mstore(0x00, account)
+            mstore(0x20, exemptionsSlot)
+            let slot := keccak256(0x00, 0x40)
+
+            sstore(slot, exempt)
+
             // emit ExemptionUpdated(account, exempt);
             mstore(0x00, exempt)
             log2(
