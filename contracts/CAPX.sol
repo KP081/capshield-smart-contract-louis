@@ -86,16 +86,87 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         treasury = _treasury;
         dao = _dao;
 
-        exemptions[_treasury] = true;
-        exemptions[_dao] = true;
+        // exemptions[_treasury] = true;
+        // exemptions[_dao] = true;
 
-        emit TreasuryAddressUpdated(address(0), _treasury);
-        emit DaoAddressUpdated(address(0), _dao);
-        emit ExemptionUpdated(_treasury, true);
-        emit ExemptionUpdated(_dao, true);
-        emit RoleGranted(TEAM_MINTER_ROLE, admin, address(0));
-        emit RoleGranted(TREASURY_MINTER_ROLE, admin, address(0));
-        emit RoleGranted(DAO_MINTER_ROLE, admin, address(0));
+        assembly {
+            let exemptionsSlot := exemptions.slot
+
+            mstore(0x00, _treasury)
+            mstore(0x20, exemptionsSlot)
+            let exemptionsTSlot := keccak256(0x00, 0x40)
+            sstore(exemptionsTSlot, 0x01)
+
+            mstore(0x00, _dao)
+            mstore(0x20, exemptionsSlot)
+            let exemptionsDSlot := keccak256(0x00, 0x40)
+            sstore(exemptionsDSlot, 0x01)
+
+            // emit TreasuryAddressUpdated(address(0), _treasury);
+            log3(
+                0x00,
+                0x00,
+                0x430359a6d97ced2b6f93c77a91e7ce9dfd43252eb91e916adba170485cd8a6a4,
+                0x0000000000000000000000000000000000000000,
+                _treasury
+            )
+
+            // emit DaoAddressUpdated(address(0), _dao);
+            log3(
+                0x00,
+                0x00,
+                0x75b7fe723ac984bff13d3b320ed1a920035692e4a8e56fb2457774e7535c0d1d,
+                0x0000000000000000000000000000000000000000,
+                _dao
+            )
+
+            // emit ExemptionUpdated(_treasury, true);
+            mstore(0x00, 0x01)
+            log2(
+                0x00,
+                0x20,
+                0x6c3adfee332544f29232690459f4fe23a1c9573efbaac65c9fc033355fb413f0,
+                _treasury
+            )
+
+            // emit ExemptionUpdated(_dao, true);
+            log2(
+                0x00,
+                0x20,
+                0x6c3adfee332544f29232690459f4fe23a1c9573efbaac65c9fc033355fb413f0,
+                _dao
+            )
+
+            // emit RoleGranted(TEAM_MINTER_ROLE, admin, address(0));
+            log4(
+                0x00,
+                0x00,
+                0x1ec1667fba5e43c5c76fff54e76d7a4a20a4fecf7b49724ad8d52a3f726e9dbd,
+                TEAM_MINTER_ROLE,
+                admin,
+                0x0000000000000000000000000000000000000000
+            )
+
+            // emit RoleGranted(TREASURY_MINTER_ROLE, admin, address(0));
+            log4(
+                0x00,
+                0x00,
+                0x1ec1667fba5e43c5c76fff54e76d7a4a20a4fecf7b49724ad8d52a3f726e9dbd,
+                TREASURY_MINTER_ROLE,
+                admin,
+                0x0000000000000000000000000000000000000000
+            )
+
+            // emit RoleGranted(DAO_MINTER_ROLE, admin, address(0));
+            log4(
+                0x00,
+                0x00,
+                0x1ec1667fba5e43c5c76fff54e76d7a4a20a4fecf7b49724ad8d52a3f726e9dbd,
+                DAO_MINTER_ROLE,
+                admin,
+                0x0000000000000000000000000000000000000000
+            )
+        }
     }
 
     ///////////////// MODIFIERS /////////////////
@@ -157,8 +228,12 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         uint256 newTotal;
         uint256 newTeamMinted;
 
+        // totalMinted = newTotal;
+        // mintAllocation.teamMinted = newTeamMinted;
+
         assembly {
-            let currentTotal := sload(totalMinted.slot)
+            let totalMintedSlot := totalMinted.slot
+            let currentTotal := sload(totalMintedSlot)
 
             // Check: totalMinted + amount <= MAX_SUPPLY
             newTotal := add(currentTotal, amount)
@@ -167,7 +242,7 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
                 revert(0x1c, 0x04)
             }
 
-            sstore(totalMinted.slot, newTotal)
+            sstore(totalMintedSlot, newTotal)
 
             let teamSlot := mintAllocation.slot
             let currentTeam := sload(teamSlot)
@@ -175,11 +250,19 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
             sstore(teamSlot, newTeamMinted)
         }
 
-        totalMinted = newTotal;
-        mintAllocation.teamMinted = newTeamMinted;
-
         _mint(to, amount);
-        emit Mint(to, amount, TEAM_MINTER_ROLE);
+
+        assembly {
+            // emit Mint(to, amount, TEAM_MINTER_ROLE);
+            mstore(0x00, amount)
+            log3(
+                0x00,
+                0x20,
+                0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f,
+                to,
+                TEAM_MINTER_ROLE
+            )
+        }
     }
 
     /**
@@ -201,8 +284,12 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         uint256 newTotal;
         uint256 newTreasuryMinted;
 
+        // totalMinted = newTotal;
+        // mintAllocation.treasuryMinted = newTreasuryMinted;
+
         assembly {
-            let currentTotal := sload(totalMinted.slot)
+            let totalMintedSlot := totalMinted.slot
+            let currentTotal := sload(totalMintedSlot)
             newTotal := add(currentTotal, amount)
 
             if gt(newTotal, MAX_SUPPLY) {
@@ -210,7 +297,7 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
                 revert(0x1c, 0x04)
             }
 
-            sstore(totalMinted.slot, newTotal)
+            sstore(totalMintedSlot, newTotal)
 
             // Update treasuryMinted (offset 1 in struct)
             let treasurySlot := add(mintAllocation.slot, 1)
@@ -219,11 +306,19 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
             sstore(treasurySlot, newTreasuryMinted)
         }
 
-        totalMinted = newTotal;
-        mintAllocation.treasuryMinted = newTreasuryMinted;
-
         _mint(to, amount);
-        emit Mint(to, amount, TREASURY_MINTER_ROLE);
+
+        assembly {
+            // emit Mint(to, amount, TREASURY_MINTER_ROLE);
+            mstore(0x00, amount)
+            log3(
+                0x00,
+                0x20,
+                0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f,
+                to,
+                TREASURY_MINTER_ROLE
+            )
+        }
     }
 
     /**
@@ -245,8 +340,12 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         uint256 newTotal;
         uint256 newDaoMinted;
 
+        // totalMinted = newTotal;
+        // mintAllocation.daoMinted = newDaoMinted;
+
         assembly {
-            let currentTotal := sload(totalMinted.slot)
+            let totalMintedSlot := totalMinted.slot
+            let currentTotal := sload(totalMintedSlot)
             newTotal := add(currentTotal, amount)
 
             if gt(newTotal, MAX_SUPPLY) {
@@ -254,7 +353,7 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
                 revert(0x1c, 0x04)
             }
 
-            sstore(totalMinted.slot, newTotal)
+            sstore(totalMintedSlot, newTotal)
 
             // Update daoMinted (offset 2 in struct)
             let daoSlot := add(mintAllocation.slot, 2)
@@ -263,11 +362,19 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
             sstore(daoSlot, newDaoMinted)
         }
 
-        totalMinted = newTotal;
-        mintAllocation.daoMinted = newDaoMinted;
-
         _mint(to, amount);
-        emit Mint(to, amount, DAO_MINTER_ROLE);
+
+        assembly {
+            // emit Mint(to, amount, DAO_MINTER_ROLE);
+            mstore(0x00, amount)
+            log3(
+                0x00,
+                0x20,
+                0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f,
+                to,
+                DAO_MINTER_ROLE
+            )
+        }
     }
 
     /**
@@ -318,14 +425,25 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
                 revert(0x1c, 0x04)
             }
 
+            // totalMinted += tokensToMint;
             // Update totalMinted
             sstore(totalMinted.slot, newTotal)
         }
 
-        totalMinted += tokensToMint;
         _mint(to, tokensToMint);
 
-        emit RevenueMint(revenue, marketValue, tokensToMint);
+        assembly {
+            // emit RevenueMint(revenue, marketValue, tokensToMint);
+            mstore(0x00, revenue)
+            mstore(0x20, marketValue)
+            mstore(0x40, tokensToMint)
+
+            log1(
+                0x00,
+                0x60,
+                0xa2873c389c7faf6dc0b7d62bb1e3f2a07e31219d74ab22a42c3278ee693734ee
+            )
+        }
     }
 
     ///////////////// ADMIN FUNCTIONS /////////////////
@@ -344,9 +462,34 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         exemptions[oldTreasury] = false;
         exemptions[newTreasury] = true;
 
-        emit TreasuryAddressUpdated(oldTreasury, newTreasury);
-        emit ExemptionUpdated(oldTreasury, false);
-        emit ExemptionUpdated(newTreasury, true);
+        assembly {
+            // emit TreasuryAddressUpdated(oldTreasury, newTreasury);
+            log3(
+                0x00,
+                0x00,
+                0x430359a6d97ced2b6f93c77a91e7ce9dfd43252eb91e916adba170485cd8a6a4,
+                oldTreasury,
+                newTreasury
+            )
+
+            // emit ExemptionUpdated(oldTreasury, false);
+            mstore(0x00, 0x00)
+            log2(
+                0x00,
+                0x20,
+                0x6c3adfee332544f29232690459f4fe23a1c9573efbaac65c9fc033355fb413f0,
+                oldTreasury
+            )
+
+            // emit ExemptionUpdated(newTreasury, true);
+            mstore(0x00, 0x01)
+            log2(
+                0x00,
+                0x20,
+                0x6c3adfee332544f29232690459f4fe23a1c9573efbaac65c9fc033355fb413f0,
+                newTreasury
+            )
+        }
     }
 
     /**
@@ -363,9 +506,34 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         exemptions[oldDao] = false;
         exemptions[newDao] = true;
 
-        emit DaoAddressUpdated(oldDao, newDao);
-        emit ExemptionUpdated(oldDao, false);
-        emit ExemptionUpdated(newDao, true);
+        assembly {
+            // emit DaoAddressUpdated(oldDao, newDao);
+            log3(
+                0x00,
+                0x00,
+                0x75b7fe723ac984bff13d3b320ed1a920035692e4a8e56fb2457774e7535c0d1d,
+                oldDao,
+                newDao
+            )
+
+            // emit ExemptionUpdated(oldDao, false);
+            mstore(0x00, 0x00)
+            log2(
+                0x00,
+                0x20,
+                0x6c3adfee332544f29232690459f4fe23a1c9573efbaac65c9fc033355fb413f0,
+                oldDao
+            )
+
+            // emit ExemptionUpdated(newDao, true);
+            mstore(0x00, 0x01)
+            log2(
+                0x00,
+                0x20,
+                0x6c3adfee332544f29232690459f4fe23a1c9573efbaac65c9fc033355fb413f0,
+                newDao
+            )
+        }
     }
 
     /**
@@ -379,7 +547,17 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         bool exempt
     ) external onlyOwner validAddress(account) {
         exemptions[account] = exempt;
-        emit ExemptionUpdated(account, exempt);
+
+        assembly {
+            // emit ExemptionUpdated(account, exempt);
+            mstore(0x00, exempt)
+            log2(
+                0x00,
+                0x20,
+                0x6c3adfee332544f29232690459f4fe23a1c9573efbaac65c9fc033355fb413f0,
+                account
+            )
+        }
     }
 
     /**
@@ -428,7 +606,17 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
      */
     function burn(uint256 amount) external {
         _burn(msg.sender, amount);
-        emit Burn(msg.sender, amount);
+
+        assembly {
+            // emit Burn(msg.sender, amount);
+            mstore(0x00, amount)
+            log2(
+                0x00,
+                0x20,
+                0xcc16f5dbb4873280815c1ee09dbd06736cffcc184412cf7a71a0fdb75d397ca5,
+                caller()
+            )
+        }
     }
 
     /**
@@ -439,7 +627,17 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
     function burnFrom(address from, uint256 amount) external {
         _spendAllowance(from, msg.sender, amount);
         _burn(from, amount);
-        emit Burn(from, amount);
+
+        assembly {
+            // emit Burn(from, amount);
+            mstore(0x00, amount)
+            log2(
+                0x00,
+                0x20,
+                0xcc16f5dbb4873280815c1ee09dbd06736cffcc184412cf7a71a0fdb75d397ca5,
+                from
+            )
+        }
     }
 
     /**
@@ -452,7 +650,18 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         uint256 roles
     ) public payable override onlyOwner {
         super.grantRoles(user, roles);
-        emit RoleGranted(roles, user, msg.sender);
+
+        assembly {
+            // emit RoleGranted(roles, user, msg.sender);
+            log4(
+                0x00,
+                0x00,
+                0x1ec1667fba5e43c5c76fff54e76d7a4a20a4fecf7b49724ad8d52a3f726e9dbd,
+                roles,
+                user,
+                caller()
+            )
+        }
     }
 
     /**
@@ -465,7 +674,18 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
         uint256 roles
     ) public payable override onlyOwner {
         super.revokeRoles(user, roles);
-        emit RoleRevoked(roles, user, msg.sender);
+
+        assembly {
+            // emit RoleRevoked(roles, user, msg.sender);
+            log4(
+                0x00,
+                0x00,
+                0xe0df21b65c73c27081b8f042a012b124085b41d78d27b7e3c4780f5650f5ebb8,
+                roles,
+                user,
+                caller()
+            )
+        }
     }
 
     ///////////////// OWNERSHIP FUNCTIONS /////////////////
@@ -616,30 +836,18 @@ contract CAPX is ERC20, OwnableRoles, Pausable, ICAPX {
             }
         }
 
-        // Check exemptions
-        bool fromExempt = exemptions[from];
-        bool toExempt = exemptions[to];
-
-        if (fromExempt || toExempt) {
+        // Check if either sender or recipient is exempt
+        if (exemptions[from] || exemptions[to]) {
+            // Exempt transfer - no fees
             super._transfer(from, to, amount);
         } else {
-            // Calculate fees using assembly for gas efficiency
-            uint256 burnAmount;
-            uint256 treasuryAmount;
-            uint256 recipientAmount;
+            // Calculate fees
+            uint256 burnAmount = (amount * BURN_FEE_PERCENT) / FEE_DENOMINATOR;
+            uint256 treasuryAmount = (amount * TREASURY_FEE_PERCENT) /
+                FEE_DENOMINATOR;
+            uint256 recipientAmount = amount - burnAmount - treasuryAmount;
 
-            assembly {
-                // burnAmount = (amount * 1) / 100
-                burnAmount := div(amount, FEE_DENOMINATOR)
-
-                // treasuryAmount = (amount * 1) / 100
-                treasuryAmount := div(amount, FEE_DENOMINATOR)
-
-                // recipientAmount = amount - burnAmount - treasuryAmount
-                recipientAmount := sub(amount, add(burnAmount, treasuryAmount))
-            }
-
-            // Burn tokens
+            // Burn tokens (reduce supply)
             if (burnAmount > 0) {
                 _burn(from, burnAmount);
             }
